@@ -198,7 +198,7 @@ printEmuState emu = do
     putStrLn $ "V Registers: " ++ (show elems)
     putStrLn $ " I Register: " ++ (show . _iRegister $ emu)
 
-main_ = do
+main = do
     emu <- newEmuState [0x61, 0x54]
     runEmuState emu
     registers <- getElems . vRegisters $ emu
