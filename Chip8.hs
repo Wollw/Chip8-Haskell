@@ -82,6 +82,9 @@ runEmuOp emu op = do
             0xB000 -> op_JP_V0_addr
             0xC000 -> op_RND_Vx_byte
             0xD000 -> op_DRW_Vx_Vy_nibble
+            0xE000 -> case op .&. 0xF0FF of
+                0xE09E -> op_SKP_Vx
+                0xE0A1 -> op_SKNP_Vx
             _      -> do
                 putStrLn ("ERROR: Invalid Opcode 0x" ++ (showHex op ""))
                 return . pcInc $ emu
@@ -166,6 +169,8 @@ runEmuOp emu op = do
         let newGen = snd . next $ gen
         setVx (nybble 2 op) (fromIntegral val) $ pcInc . set randGen newGen $ emu
     op_DRW_Vx_Vy_nibble = return emu -- Need to implement
+    op_SKP_Vx = return emu -- Need to implement
+    op_SKNP_Vx = return emu -- Need to implement
 
     pcInc e = set pc (view pc e + 2) e
     spDec e = set sp (view sp e - 1) e
