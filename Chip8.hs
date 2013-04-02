@@ -9,6 +9,7 @@ import Data.Bits
 import Numeric
 
 import System.Random
+import System.IO
 
 type EmuOp = Word16
 
@@ -83,8 +84,18 @@ runEmuOp emu op = do
             0xC000 -> op_RND_Vx_byte
             0xD000 -> op_DRW_Vx_Vy_nibble
             0xE000 -> case op .&. 0xF0FF of
-                0xE09E -> op_SKP_Vx
-                0xE0A1 -> op_SKNP_Vx
+                0xE09E -> op_SKP_Vx isPressed
+                0xE0A1 -> op_SKNP_Vx isPressed
+            0xF000 -> case op .&. 0xF0FF of
+                0xF007 -> op_LD_Vx_DT
+                0xF00A -> op_LD_Vx_K
+                0xF015 -> op_LD_DT_Vx
+                0xF018 -> op_LD_ST_Vx
+                0xF01E -> op_ADD_I_Vx
+                0xF029 -> op_LD_F_Vx
+                0xF033 -> op_LD_B_Vx
+                0xF055 -> op_LD_I_Vx
+                0xF065 -> op_LD_Vx_I
             _      -> do
                 putStrLn ("ERROR: Invalid Opcode 0x" ++ (showHex op ""))
                 return . pcInc $ emu
@@ -168,10 +179,26 @@ runEmuOp emu op = do
         let val = ((fst . next $ gen) `mod` 255) .&. (fromIntegral $ byte 0 op)
         let newGen = snd . next $ gen
         setVx (nybble 2 op) (fromIntegral val) $ pcInc . set randGen newGen $ emu
-    op_DRW_Vx_Vy_nibble = return emu -- Need to implement
-    op_SKP_Vx = return emu -- Need to implement
-    op_SKNP_Vx = return emu -- Need to implement
 
+    op_DRW_Vx_Vy_nibble = return emu -- Need to implement
+    op_SKP_Vx isPressed  = do
+        pressed <- isPressed
+        case pressed of
+            True  -> print "Pressed."
+            False -> print "Not pressed."
+        return emu
+    op_SKNP_Vx isPressed = do -- Need to implement
+        return emu
+    op_LD_Vx_DT = return emu
+    op_LD_Vx_K  = return emu
+    op_LD_DT_Vx = return emu
+    op_LD_ST_Vx = return emu
+    op_ADD_I_Vx = return emu
+    op_LD_F_Vx  = return emu
+    op_LD_B_Vx  = return emu
+    op_LD_I_Vx  = return emu
+    op_LD_Vx_I  = return emu
+    
     pcInc e = set pc (view pc e + 2) e
     spDec e = set sp (view sp e - 1) e
     spInc e = set sp (view sp e + 1) e
@@ -191,6 +218,7 @@ runEmuOp emu op = do
         writeArray (vRegisters emu) vX val
         return emu
     getVx vX emu = readArray (vRegisters emu) vX
+    isPressed = hReady stdin
 
 nybble :: Int -> EmuOp -> Word8
 nybble n op = fromIntegral $ (op .&. (0xf `shift` (n * 4))) `shift` (n * (-4))
