@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 import Control.Lens
+import Control.Monad.Random
 
 import Data.Word
 import Data.Array.IO
@@ -9,10 +10,19 @@ import qualified Data.ByteString as B
 
 import Numeric
 
-import System.Random
 import System.IO
 
 type EmuOp = Word16
+
+type KeyValue = Word8
+
+class EmuInterface a where
+    keyDown    :: KeyValue -> a -> IO Bool
+    randomByte :: a -> IO Word8
+
+instance EmuInterface EmuState where
+    keyDown emu _  = hReady stdin
+    randomByte emu = getRandomR (0,255)
 
 data EmuState = EmuState
     { vRegisters :: IOUArray Word8  Word8
@@ -21,7 +31,6 @@ data EmuState = EmuState
     , stack      :: IOUArray Word8  Word16
     , _pc        :: Word16
     , _sp        :: Word8
-    , _randGen   :: StdGen
     }
 
 makeLenses ''EmuState
@@ -39,7 +48,6 @@ newEmuState ops = do
         , stack      = stk
         , _pc = 0x200
         , _sp = 0x00
-        , _randGen = gen
         }
     where
         memStart = replicate 0x200 0
@@ -85,8 +93,8 @@ runEmuOp emu op = do
             0xC000 -> op_RND_Vx_byte
             0xD000 -> op_DRW_Vx_Vy_nibble
             0xE000 -> case op .&. 0xF0FF of
-                0xE09E -> op_SKP_Vx isPressed
-                0xE0A1 -> op_SKNP_Vx isPressed
+                0xE09E -> op_SKP_Vx
+                0xE0A1 -> op_SKNP_Vx
             0xF000 -> case op .&. 0xF0FF of
                 0xF007 -> op_LD_Vx_DT
                 0xF00A -> op_LD_Vx_K
@@ -99,7 +107,7 @@ runEmuOp emu op = do
                 0xF065 -> op_LD_Vx_I
             _      -> do
                 putStrLn ("ERROR: Invalid Opcode 0x" ++ (showHex op ""))
-                return . pcInc $ emu
+                return . step $ emu
   where
     -- Clear the display --
     op_CLS = return emu
@@ -129,17 +137,17 @@ runEmuOp emu op = do
     -- Set register value --
     op_LD_Vx_byte = do
         writeArray (vRegisters emu) (nybble 2 op) (byte 0 op)
-        return . pcInc $ emu
+        return . step $ emu
     -- Set Vx to Vx + value --
     op_ADD_Vx_byte = do
         vX <- readArray (vRegisters emu) (nybble 2 op)
         writeArray (vRegisters emu) (nybble 2 op) $ byte 0 op + vX
-        return . pcInc $ emu
+        return . step $ emu
     -- Set Vx to Vy --
     op_LD_Vx_Vy = do
         vY <- readArray (vRegisters emu) (nybble 1 op)
         writeArray (vRegisters emu) (nybble 2 op) vY
-        return . pcInc $ emu
+        return . step $ emu
     -- operations on Vx and Vy that store to Vx --
     op_OR_Vx_Vy  = opVxVy (.|.)
     op_AND_Vx_Vy = opVxVy (.&.)
@@ -147,48 +155,46 @@ runEmuOp emu op = do
     op_ADD_Vx_Vy = do
         (vX, vY) <- getVxVy
         case fromIntegral vX + fromIntegral vY > 255 of
-            True  -> setVx (nybble 2 op) (vX + vY) emu >>= setVx 0xf 1 >>= (\e -> return $ pcInc e)
-            False -> setVx (nybble 2 op) (vX + vY) emu >>= setVx 0xf 0 >>= (\e -> return $ pcInc e)
+            True  -> setVx (nybble 2 op) (vX + vY) emu >>= setVx 0xf 1 >>= (\e -> return $ step e)
+            False -> setVx (nybble 2 op) (vX + vY) emu >>= setVx 0xf 0 >>= (\e -> return $ step e)
     op_SUB_Vx_Vy = do
         (vX, vY) <- getVxVy
         case vX > vY of
-            True  -> setVx (nybble 2 op) (vX - vY) emu >>= setVx 0xf 1 >>= (\e -> return $ pcInc e)
-            False -> setVx (nybble 2 op) (vX - vY) emu >>= setVx 0xf 0 >>= (\e -> return $ pcInc e)
+            True  -> setVx (nybble 2 op) (vX - vY) emu >>= setVx 0xf 1 >>= (\e -> return $ step e)
+            False -> setVx (nybble 2 op) (vX - vY) emu >>= setVx 0xf 0 >>= (\e -> return $ step e)
     op_SHR_Vx = do
         (vX, _) <- getVxVy
-        setVx (nybble 2 op) (vX `shiftR` 1) emu >>= setVx 0xf (vX .&. 1) >>= (\e -> return $ pcInc e)
+        setVx (nybble 2 op) (vX `shiftR` 1) emu >>= setVx 0xf (vX .&. 1) >>= (\e -> return $ step e)
     op_SUBN_Vx_Vy = do
         (vX, vY) <- getVxVy
         case vY > vX of
-            True  -> setVx (nybble 2 op) (vY - vX) emu >>= setVx 0xf 1 >>= (\e -> return $ pcInc e)
-            False -> setVx (nybble 2 op) (vY - vX) emu >>= setVx 0xf 0 >>= (\e -> return $ pcInc e)
+            True  -> setVx (nybble 2 op) (vY - vX) emu >>= setVx 0xf 1 >>= (\e -> return $ step e)
+            False -> setVx (nybble 2 op) (vY - vX) emu >>= setVx 0xf 0 >>= (\e -> return $ step e)
     op_SHL_Vx = do
         (vX, _) <- getVxVy
         case vX .&. 128 /= 0 of
-            True  -> setVx (nybble 2 op) (vX `shiftL` 1) emu >>= setVx 0xf 1 >>= (\e -> return $ pcInc e)
-            False -> setVx (nybble 2 op) (vX `shiftL` 1) emu >>= setVx 0xf 0 >>= (\e -> return $ pcInc e)
+            True  -> setVx (nybble 2 op) (vX `shiftL` 1) emu >>= setVx 0xf 1 >>= (\e -> return $ step e)
+            False -> setVx (nybble 2 op) (vX `shiftL` 1) emu >>= setVx 0xf 0 >>= (\e -> return $ step e)
     op_SNE_Vx_Vy = do
         (vX, vY) <- getVxVy
         skipIf (/=) vX vY
     op_LD_I_addr = do
-        return . pcInc . set iRegister (op .&. 0x0fff) $ emu
+        return . step . set iRegister (op .&. 0x0fff) $ emu
     op_JP_V0_addr = do
         v0 <- getVx 0 emu
         return . set pc ((op .&. 0x0FFF) + (fromIntegral v0)) $ emu
     op_RND_Vx_byte = do
-        let gen = view randGen emu
-        let val = ((fst . next $ gen) `mod` 255) .&. (fromIntegral $ byte 0 op)
-        let newGen = snd . next $ gen
-        setVx (nybble 2 op) (fromIntegral val) $ pcInc . set randGen newGen $ emu
-
+        byte <- randomByte emu
+        print byte
+        fmap step $ setVx (nybble 2 op) byte emu
     op_DRW_Vx_Vy_nibble = return emu -- Need to implement
-    op_SKP_Vx isPressed  = do
-        pressed <- isPressed
+    op_SKP_Vx = do
+        pressed <- keyDown 0 emu
         case pressed of
             True  -> print "Pressed."
             False -> print "Not pressed."
         return emu
-    op_SKNP_Vx isPressed = do -- Need to implement
+    op_SKNP_Vx = do -- Need to implement
         return emu
     op_LD_Vx_DT = return emu
     op_LD_Vx_K  = return emu
@@ -200,17 +206,17 @@ runEmuOp emu op = do
     op_LD_I_Vx  = return emu
     op_LD_Vx_I  = return emu
     
-    pcInc e = set pc (view pc e + 2) e
+    step e = set pc (view pc e + 2) e
     spDec e = set sp (view sp e - 1) e
     spInc e = set sp (view sp e + 1) e
     skipIf f x y = do
         case x `f` y of
-            True  -> return . pcInc . pcInc $ emu
-            False -> return . pcInc $ emu
+            True  -> return . step . step $ emu
+            False -> return . step $ emu
     opVxVy f = do
         (vX, vY) <- getVxVy
         writeArray (vRegisters emu) (nybble 2 op) $ vX `f` vY
-        return . pcInc $ emu
+        return . step $ emu
     getVxVy = do
         vX <- readArray (vRegisters emu) (nybble 2 op)
         vY <- readArray (vRegisters emu) (nybble 1 op)
@@ -219,7 +225,6 @@ runEmuOp emu op = do
         writeArray (vRegisters emu) vX val
         return emu
     getVx vX emu = readArray (vRegisters emu) vX
-    isPressed = hReady stdin
 
 nybble :: Int -> EmuOp -> Word8
 nybble n op = fromIntegral $ (op .&. (0xf `shift` (n * 4))) `shift` (n * (-4))
