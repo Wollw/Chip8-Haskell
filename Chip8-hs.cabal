@@ -17,4 +17,4 @@ cabal-version:       >=1.8
 executable Chip8-hs
   main-is:             Chip8.hs
   -- other-modules:       
-  build-depends:       base ==4.6.*, random, array, lens
+  build-depends:       base ==4.6.*, random, array, lens, bytestring

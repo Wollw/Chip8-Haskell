@@ -5,6 +5,7 @@ import Control.Lens
 import Data.Word
 import Data.Array.IO
 import Data.Bits
+import qualified Data.ByteString as B
 
 import Numeric
 
@@ -232,7 +233,8 @@ printEmuState emu = do
     putStrLn $ " I Register: " ++ (show . _iRegister $ emu)
 
 main = do
-    emu <- newEmuState [0x61, 0x54]
+    file <- B.readFile "ROM"
+    emu <- newEmuState . B.unpack $ file
     runEmuState emu
     registers <- getElems . vRegisters $ emu
     print registers
