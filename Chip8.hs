@@ -14,26 +14,23 @@ import Numeric
 import System.IO
 
 type EmuOp = Word16
-
 type KeyValue = Word8
-
 type Address = Word16
-
 type Length = Int
 
 class EmuIO a where
-    clearScreen :: a -> IO a
-    randomByte  :: a -> IO Word8
-    keyDown     :: KeyValue -> a -> IO Bool
-    getKey      :: a -> IO KeyValue
-    drawSprite  :: a -> Address -> Length -> x -> y -> IO a
+    clearScreen   :: a -> IO a
+    randomByte    :: a -> IO Word8
+    keyDown       :: KeyValue -> a -> IO Bool
+    getKey        :: a -> IO KeyValue
+    drawSprite    :: a -> Address -> Length -> (Word8, Word8) -> IO a
 
 instance EmuIO EmuState where
-    clearScreen emu    = return emu
-    randomByte emu     = getRandomR (0,255)
-    keyDown emu keyVal = hReady stdin
-    getKey emu         = fmap (fromIntegral . ord) getChar
-    drawSprite emu addr len x y = return emu
+    clearScreen emu         = return emu
+    randomByte emu          = getRandomR (0,255)
+    keyDown emu keyVal      = hReady stdin
+    getKey emu              = fmap (fromIntegral . ord) getChar
+    drawSprite e a l (x, y) = return e
 
 data EmuState = EmuState
     { vRegisters :: IOUArray Word8  Word8
@@ -42,6 +39,8 @@ data EmuState = EmuState
     , stack      :: IOUArray Word8  Word16
     , _pc        :: Word16
     , _sp        :: Word8
+    , _dt        :: Word8
+    , _st        :: Word8
     }
 
 makeLenses ''EmuState
@@ -59,6 +58,8 @@ newEmuState ops = do
         , stack      = stk
         , _pc = 0x200
         , _sp = 0x00
+        , _st = 0x00
+        , _dt = 0x00
         }
     where
         memStart = replicate 0x200 0
@@ -200,7 +201,7 @@ runEmuOp emu op = do
         fmap step $ setVx (nybble 2 op) byte emu
     op_DRW_Vx_Vy_nibble = do
         let iReg = view iRegister emu
-        drawSprite emu iReg 0 0 0
+        drawSprite emu iReg 0 (0,0)
         return . step $ emu
     op_SKP_Vx = do
         pressed <- keyDown 0 emu
@@ -210,12 +211,17 @@ runEmuOp emu op = do
         return emu
     op_SKNP_Vx = do -- Need to implement
         return emu
-    op_LD_Vx_DT = return emu
+    op_LD_Vx_DT = do
+        setVx (nybble 2 op) (view dt emu) (step emu)
     op_LD_Vx_K  = do
         key <- getKey emu
         setVx (nybble 2 op) key (step emu)
-    op_LD_DT_Vx = return emu
-    op_LD_ST_Vx = return emu
+    op_LD_DT_Vx = do
+        vx <- getVx (nybble 2 op) emu
+        return $ set dt vx (step emu)
+    op_LD_ST_Vx = do
+        vx <- getVx (nybble 2 op) emu
+        return $ set st vx (step emu)
     op_ADD_I_Vx = return emu
     op_LD_F_Vx  = return emu
     op_LD_B_Vx  = return emu
@@ -252,6 +258,8 @@ printEmuState emu = do
     elems <- getElems . vRegisters $ emu
     putStrLn $ "V Registers: " ++ (show elems)
     putStrLn $ " I Register: " ++ (show . _iRegister $ emu)
+    putStrLn $ "Delay Timer: " ++ (show . _dt $ emu)
+    putStrLn $ "Sound Timer: " ++ (show . _st $ emu)
 
 main = do
     file <- B.readFile "ROM"
