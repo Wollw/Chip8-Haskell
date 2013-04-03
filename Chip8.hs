@@ -7,6 +7,7 @@ import Data.Word
 import Data.Array.IO
 import Data.Bits
 import qualified Data.ByteString as B
+import Data.Char
 
 import Numeric
 
@@ -16,13 +17,23 @@ type EmuOp = Word16
 
 type KeyValue = Word8
 
-class EmuInterface a where
-    keyDown    :: KeyValue -> a -> IO Bool
-    randomByte :: a -> IO Word8
+type Address = Word16
 
-instance EmuInterface EmuState where
-    keyDown emu _  = hReady stdin
-    randomByte emu = getRandomR (0,255)
+type Length = Int
+
+class EmuIO a where
+    clearScreen :: a -> IO a
+    randomByte  :: a -> IO Word8
+    keyDown     :: KeyValue -> a -> IO Bool
+    getKey      :: a -> IO KeyValue
+    drawSprite  :: a -> Address -> Length -> x -> y -> IO a
+
+instance EmuIO EmuState where
+    clearScreen emu    = return emu
+    randomByte emu     = getRandomR (0,255)
+    keyDown emu keyVal = hReady stdin
+    getKey emu         = fmap (fromIntegral . ord) getChar
+    drawSprite emu addr len x y = return emu
 
 data EmuState = EmuState
     { vRegisters :: IOUArray Word8  Word8
@@ -67,7 +78,7 @@ runEmuOp :: EmuState -> EmuOp -> IO EmuState
 runEmuOp emu op = do
     print $ "0x" ++ (showHex op "")
     case op of
-        0x00E0 -> op_CLS -- Need to implement
+        0x00E0 -> op_CLS
         0x00EE -> op_RET
         op     -> case op .&. 0xF000 of
             0x1000 -> op_JP_addr
@@ -110,7 +121,7 @@ runEmuOp emu op = do
                 return . step $ emu
   where
     -- Clear the display --
-    op_CLS = return emu
+    op_CLS = clearScreen emu >> return emu
     -- Return from a subroutine --
     op_RET = do
         addr <- readArray (stack emu) (view sp emu)
@@ -187,7 +198,10 @@ runEmuOp emu op = do
         byte <- randomByte emu
         print byte
         fmap step $ setVx (nybble 2 op) byte emu
-    op_DRW_Vx_Vy_nibble = return emu -- Need to implement
+    op_DRW_Vx_Vy_nibble = do
+        let iReg = view iRegister emu
+        drawSprite emu iReg 0 0 0
+        return . step $ emu
     op_SKP_Vx = do
         pressed <- keyDown 0 emu
         case pressed of
@@ -197,7 +211,9 @@ runEmuOp emu op = do
     op_SKNP_Vx = do -- Need to implement
         return emu
     op_LD_Vx_DT = return emu
-    op_LD_Vx_K  = return emu
+    op_LD_Vx_K  = do
+        key <- getKey emu
+        setVx (nybble 2 op) key (step emu)
     op_LD_DT_Vx = return emu
     op_LD_ST_Vx = return emu
     op_ADD_I_Vx = return emu
