@@ -7,8 +7,8 @@ import Text.Printf (printf)
 prettifyWord16 :: Word16 -> String
 prettifyWord16 = printf "%04x"
 
-nibble :: Int -> Word16 -> Word16
-nibble n w = w `shiftR` (n*4) .&. 0xf
+nibble :: Num a => Int -> Word16 -> a
+nibble n w = fromIntegral $ w `shiftR` (n*4) .&. 0xf
 
 lowByte :: Word16 -> Word8
 lowByte w  = fromIntegral $ 0xff .&. w
