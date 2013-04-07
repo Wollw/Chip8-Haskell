@@ -1,9 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Chip8.Memory
     ( Register (..)
-    , Address  (..)
+    , Address  (Ram, Register)
     , Memory
     , MemoryValue (..)
+    , toRegister
+    , fromRegister
     , new
     , load
     , store
@@ -18,8 +20,6 @@ import Data.Word
 import Data.Array.IO
 import Data.IORef
 
-
-
 data Register
     = V0  | V1  | V2  | V3
     | V4  | V5  | V6  | V7
@@ -27,6 +27,12 @@ data Register
     | V12 | V13 | V14 | V15
     | I
     deriving (Bounded, Enum, Eq, Show)
+
+toRegister  :: Int -> Register
+toRegister = toEnum
+
+fromRegister :: Register -> Int
+fromRegister = fromEnum
 
 data Address
     = Pc
