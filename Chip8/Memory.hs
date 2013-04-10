@@ -9,6 +9,8 @@ module Chip8.Memory
     , new
     , load
     , store
+    , toString
+    , printMemory
     ) where
 
 import Chip8.Util
@@ -70,6 +72,22 @@ new = do
                   }
 
 data MemoryValue = Mem8 Word8 | Mem16 Word16
+
+toString :: Memory -> IO String
+toString m = do
+    pc'   <- fmap show . readIORef . pc $ m
+    sp'   <- fmap show . readIORef . sp $ m
+    regs' <- fmap show . getElems  . registers $ m
+    ir'   <- fmap show . readIORef . iregister $ m
+    ram'  <- fmap show . getElems  . ram $ m
+    return   $  "        PC: " ++ pc'
+     ++ "\n" ++ "        SP: " ++ sp'
+     ++ "\n" ++ " Registers: " ++ regs'
+     ++ "\n" ++ "I Register: " ++ ir'
+--   ++ "\n" ++ "       RAM: " ++ ram'
+
+printMemory :: Memory -> IO ()
+printMemory m = toString m >>= putStrLn
 
 load :: Memory -> Address -> IO MemoryValue
 load m Pc           = (readIORef . pc $ m) >>= \x -> return $ Mem16 x
