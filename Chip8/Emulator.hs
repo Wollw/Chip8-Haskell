@@ -16,20 +16,25 @@ runP is = do
     mapM_ (executeP mem) is
 
 execute :: Memory -> Instruction -> IO ()
-execute m i = execute' m i
-
+execute m i = do
+    execute' m i
+    incPc m
 executeP :: Memory -> Instruction -> IO ()
 executeP m i = do
-    execute' m i
+    execute m i
     printMemory m
 
 execute' :: Memory -> Instruction -> IO ()
-execute' m (SYS a)          = return () -- todo
+execute' m (SYS a)          = return () -- Jump to Machine Code, unused
 execute' m CLS              = return () -- todo
 execute' m RET              = return () -- todo
 execute' m (JP a)           = return () -- todo
 execute' m (CALL a)         = return () -- todo
-execute' m (SEByte  vx w)   = return () -- todo
+execute' m (SEByte  vx w)   = do
+    x <- loadInt m (Register vx)
+    case fromIntegral w == x of
+        True -> incPc m
+        False -> return ()
 execute' m (SNEByte vx w)   = return () -- todo
 execute' m (SEAddr  vx vy)  = return () -- todo
 execute' m (LDByte  vx w)   = store m (Register vx) (Mem8 w)
@@ -90,3 +95,7 @@ loadInt m addr = do
 
 toMem8  x = Mem8  $ fromIntegral x
 toMem16 x = Mem16 $ fromIntegral x
+
+incPc m = do
+    (Mem16 pc) <- load m Pc
+    store m Pc $ toMem16 (pc + 0x02)

@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Chip8.Memory
     ( Register (..)
-    , Address  (Ram, Register)
+    , Address  (Ram, Register, Pc, Sp)
     , Memory
     , MemoryValue (..)
     , toRegister
@@ -21,6 +21,7 @@ import Control.Monad.State
 import Data.Word
 import Data.Array.IO
 import Data.IORef
+import Data.List (intercalate)
 
 data Register
     = V0 | V1 | V2 | V3
@@ -78,16 +79,16 @@ data MemoryValue
 
 toString :: Memory -> IO String
 toString m = do
-    pc'   <- fmap show . readIORef . pc $ m
-    sp'   <- fmap show . readIORef . sp $ m
-    regs' <- fmap show . getElems  . registers $ m
-    ir'   <- fmap show . readIORef . iregister $ m
-    ram'  <- fmap show . getElems  . ram $ m
+    pc'   <- fmap prettifyWord16      . readIORef . pc $ m
+    sp'   <- fmap prettifyWord8       . readIORef . sp $ m
+    regs' <- fmap (map prettifyWord8) . getElems  . registers $ m
+    i'   <- fmap prettifyWord16      . readIORef . iregister $ m
+--  ram'  <- fmap (map prettifyWord8) . getElems  . ram $ m
     return   $  "        PC: " ++ pc'
      ++ "\n" ++ "        SP: " ++ sp'
-     ++ "\n" ++ " Registers: " ++ regs'
-     ++ "\n" ++ "I Register: " ++ ir'
---   ++ "\n" ++ "       RAM: " ++ ram'
+     ++ "\n" ++ " Registers: " ++ "| " ++ intercalate " | " (map show [V0 .. I]) ++ "    |"
+     ++ "\n" ++ "            " ++ "| " ++ intercalate " | " regs' ++ " | " ++ i' ++    " |"
+--   ++ "\n" ++ "       RAM: " ++ "[" ++ intercalate ", " ram'  ++ "]"
 
 printMemory :: Memory -> IO ()
 printMemory m = toString m >>= putStrLn
