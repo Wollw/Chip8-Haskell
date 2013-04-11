@@ -71,7 +71,10 @@ new = do
                   , ram = ram'
                   }
 
-data MemoryValue = Mem8 Word8 | Mem16 Word16
+data MemoryValue
+    = Mem8  Word8
+    | Mem16 Word16
+    deriving (Show)
 
 toString :: Memory -> IO String
 toString m = do
