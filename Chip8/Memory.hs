@@ -94,11 +94,11 @@ toString m = do
     stack' <- fmap (map prettifyWord16) . getElems  . stack $ m
 --  ram'   <- fmap (map prettifyWord8)  . getElems  . ram $ m
     return   $  "        PC: " ++ pc'
-     ++ "\n" ++ "        SP: " ++ sp'
      ++ "\n" ++ " Registers: " ++ "| " ++ intercalate " | " (map show $ take 8 [V0 .. I]) ++ " |"
      ++ "\n" ++ "            " ++ "| " ++ intercalate " | " (take 8 regs') ++ " | "
      ++ "\n" ++ "            " ++ "| " ++ intercalate " | " (map show $ drop 8 [V0 .. I]) ++ "     |"
      ++ "\n" ++ "            " ++ "| " ++ intercalate " | " (drop 8 regs') ++ " | " ++ i' ++    "  |"
+     ++ "\n" ++ "        SP: " ++ sp'
      ++ "\n" ++ "     Stack: " ++ "[" ++ intercalate ":" (take 8 stack') ++ ":"
      ++ "\n" ++ "            " ++ " " ++ intercalate ":" (drop 8 stack')  ++ "]"
 --   ++ "\n" ++ "       RAM: " ++ "[" ++ intercalate ", " ram'  ++ "]"

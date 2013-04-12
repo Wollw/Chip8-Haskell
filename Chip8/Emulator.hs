@@ -46,12 +46,16 @@ execute' m (SEByte  vx w)   = do
     case fromIntegral w == x of
         True -> incrementProgramCounter m
         False -> return ()
-execute' m (SNEByte vx w)   = return () -- todo
+execute' m (SNEByte vx w)   = do
+    x <- loadInt m (Register vx)
+    case fromIntegral w /= x of
+        True -> incrementProgramCounter m
+        False -> return ()
 execute' m (SEAddr  vx vy)  = return () -- todo
 execute' m (LDByte  vx w)   = store m (Register vx) (Mem8 w)
 execute' m (ADDByte vx w)   = do
-    result  <- loadf (w+) m (Register vx)
-    store m (Register vx) result
+    x <- loadInt m (Register vx)
+    store m (Register vx) $ toMem8 (fromIntegral w + x)
 execute' m (LDReg   vx vy)  = do
     (Mem8 y) <- load m (Register vy)
     store m (Register vx) (Mem8 y)
@@ -90,11 +94,17 @@ execute' m (SHL vx)         = do
     x <- loadInt m (Register vx)
     store m (Register VF) (toMem8 $ (x .&. 0x80) `shiftR` 7)
     store m (Register vx) (toMem8 $ x `shiftL` 1)
-execute' m (SNEAddr vx vr)  = return () -- todo
-
-loadf f m r = do
-    (Mem8 x) <- load m r
-    return (Mem8 $ f x)
+execute' m (SNEAddr vx vy)  = do
+    x <- loadInt m (Register vx)
+    y <- loadInt m (Register vy)
+    case fromIntegral x /= y of
+        True -> incrementProgramCounter m
+        False -> return ()
+execute' m (LDI (Ram addr)) = do
+    store m (Register I) (toMem16 addr)
+execute' m (LONGJP (Ram a)) = do
+    x <- loadInt m (Register V0)
+    store m Pc (toMem16 $ fromIntegral a + x)
 
 loadInt :: Memory -> Address -> IO Int
 loadInt m (Register I) = do
