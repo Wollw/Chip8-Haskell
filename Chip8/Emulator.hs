@@ -51,7 +51,12 @@ execute' m (SNEByte vx w)   = do
     case fromIntegral w /= x of
         True -> incrementProgramCounter m
         False -> return ()
-execute' m (SEAddr  vx vy)  = return () -- todo
+execute' m (SEAddr vx vy)  = do
+    x <- loadInt m (Register vx)
+    y <- loadInt m (Register vy)
+    case fromIntegral x == y of
+        True -> incrementProgramCounter m
+        False -> return ()
 execute' m (LDByte  vx w)   = store m (Register vx) (Mem8 w)
 execute' m (ADDByte vx w)   = do
     x <- loadInt m (Register vx)
