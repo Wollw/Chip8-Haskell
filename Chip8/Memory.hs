@@ -11,6 +11,7 @@ module Chip8.Memory
     , store
     , toString
     , printMemory
+    , printRamR
     , incrementProgramCounter
     , popStack
     , pushStack
@@ -92,7 +93,6 @@ toString m = do
     regs'  <- fmap (map prettifyWord8)  . getElems  . registers $ m
     i'     <- fmap prettifyWord16       . readIORef . iregister $ m
     stack' <- fmap (map prettifyWord16) . getElems  . stack $ m
---  ram'   <- fmap (map prettifyWord8)  . getElems  . ram $ m
     return   $  "        PC: " ++ pc'
      ++ "\n" ++ " Registers: " ++ "| " ++ intercalate " | " (map show $ take 8 [V0 .. I]) ++ " |"
      ++ "\n" ++ "            " ++ "| " ++ intercalate " | " (take 8 regs') ++ " | "
@@ -101,10 +101,15 @@ toString m = do
      ++ "\n" ++ "        SP: " ++ sp'
      ++ "\n" ++ "     Stack: " ++ "[" ++ intercalate ":" (take 8 stack') ++ ":"
      ++ "\n" ++ "            " ++ " " ++ intercalate ":" (drop 8 stack')  ++ "]"
---   ++ "\n" ++ "       RAM: " ++ "[" ++ intercalate ", " ram'  ++ "]"
 
 printMemory :: Memory -> IO ()
 printMemory m = toString m >>= putStrLn
+
+printRamR :: Memory -> (Int, Int) -> IO ()
+printRamR m (min,max) = do
+    ram' <- fmap (map prettifyWord8) . getElems . ram $ m
+    putStrLn $ "       RAM: ["
+        ++ intercalate ":" (drop min . take (max - min) $ ram') ++ "]"
 
 load :: Memory -> Address -> IO MemoryValue
 load m Pc           = (readIORef . pc $ m) >>= \x -> return $ Mem16 x

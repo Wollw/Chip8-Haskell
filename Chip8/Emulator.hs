@@ -1,5 +1,6 @@
 module Chip8.Emulator where
 
+import Control.Monad
 import Control.Monad.Random
 
 import Chip8.CPU
@@ -116,6 +117,33 @@ execute' m (LONGJP (Ram a)) = do
 execute' m (RND vx w) = do
     r <- getRandomR (0,255) :: IO Word8
     store m (Register vx) (toMem8 $ w .&. r)
+execute' m (DRW vx vy nib) = do
+    return () -- todo
+execute' m (SKP vx)    = do
+    return () -- todo
+execute' m (SKNP vx)   = do
+    return () -- todo
+execute' m (LDVxDT vx) = do
+    return () -- todo
+execute' m (LDDTVx vx) = do
+    return () -- todo
+execute' m (LDSTVx vx) = do
+    return () -- todo
+execute' m (ADDI vx)   = do
+    i <- loadInt m (Register I)
+    x <- loadInt m (Register vx)
+    store m (Register I) $ toMem16 (i + x)
+execute' m (LDF vx)    = do
+    x <- fmap (.&.0xf) $ loadInt m (Register vx)
+    store m (Register I) $ toMem16 (x * 5)
+execute' m (LDB vx)    = do
+    x <- loadInt m (Register vx)
+    i <- fmap fromIntegral $ loadInt m (Register I)
+    foldM_ (\a y -> store m (Ram $ i + a) (toMem8 y) >> return (a + 1)) 0 $ digits x
+  where
+    digits = reverse . digitsR
+    digitsR 0 = []
+    digitsR x = x `mod` 10 : digitsR (x `div` 10)
 
 loadInt :: Memory -> Address -> IO Int
 loadInt m (Register I) = do
