@@ -1,9 +1,12 @@
 module Chip8.Emulator where
 
+import Control.Monad.Random
+
 import Chip8.CPU
 import Chip8.Memory
 
 import Data.Bits
+import Data.Word
 
 run :: [Instruction] -> IO ()
 run is = do
@@ -110,6 +113,9 @@ execute' m (LDI (Ram addr)) = do
 execute' m (LONGJP (Ram a)) = do
     x <- loadInt m (Register V0)
     store m Pc (toMem16 $ fromIntegral a + x)
+execute' m (RND vx w) = do
+    r <- getRandomR (0,255) :: IO Word8
+    store m (Register vx) (toMem8 $ w .&. r)
 
 loadInt :: Memory -> Address -> IO Int
 loadInt m (Register I) = do

@@ -17,4 +17,4 @@ cabal-version:       >=1.8
 library
   exposed-modules:     Chip8.Memory, Chip8.Util, Chip8.CPU, Chip8.Emulator
   -- other-modules:       
-  build-depends:       base ==4.6.*, lens ==3.9.*, mtl ==2.1.*, array ==0.4.*
+  build-depends:       base ==4.6.*, lens ==3.9.*, mtl ==2.1.*, array ==0.4.*, MonadRandom
