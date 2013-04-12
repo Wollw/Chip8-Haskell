@@ -11,6 +11,10 @@ module Chip8.Memory
     , store
     , toString
     , printMemory
+    , incrementProgramCounter
+    , popStack
+    , toMem8
+    , toMem16
     ) where
 
 import Chip8.Util
@@ -56,6 +60,7 @@ data Memory
              , registers :: IOUArray Int Word8 
              , iregister :: IORef Word16
              , ram       :: IOUArray Word16 Word8
+             , stack     :: IOUArray Word8  Word16
              }
 
 new :: IO Memory
@@ -65,11 +70,13 @@ new = do
     registers' <- newArray (0x0,   0xF  ) 0
     iregister' <- newIORef 0
     ram'       <- newArray (0x000, 0xFFF) 0
+    stack'     <- newArray (0x00, 0x0f)   0
     return Memory { pc = pc'
                   , sp = sp'
                   , registers = registers'
                   , iregister = iregister'
-                  , ram = ram'
+                  , ram   = ram'
+                  , stack = stack'
                   }
 
 data MemoryValue
@@ -82,7 +89,7 @@ toString m = do
     pc'   <- fmap prettifyWord16      . readIORef . pc $ m
     sp'   <- fmap prettifyWord8       . readIORef . sp $ m
     regs' <- fmap (map prettifyWord8) . getElems  . registers $ m
-    i'   <- fmap prettifyWord16      . readIORef . iregister $ m
+    i'    <- fmap prettifyWord16      . readIORef . iregister $ m
 --  ram'  <- fmap (map prettifyWord8) . getElems  . ram $ m
     return   $  "        PC: " ++ pc'
      ++ "\n" ++ "        SP: " ++ sp'
@@ -106,3 +113,23 @@ store m Sp (Mem8  x) = writeIORef (sp m) x
 store m (Register I) (Mem16 x) = writeIORef (iregister m) x
 store m (Register r) (Mem8  x) = writeArray (registers m) (fromEnum r) x
 store m (Ram r)      (Mem8  x) = writeArray (ram m) r x
+
+incrementProgramCounter :: Memory -> IO ()
+incrementProgramCounter m = do
+    (Mem16 pc) <- load m Pc
+    store m Pc $ toMem16 (pc + 0x02)
+
+popStack :: Memory -> IO Word16
+popStack m = do
+    (Mem8 sp)   <- load m Sp
+    store m Sp $ toMem8 (sp - 1)
+    readArray (stack m) sp
+
+pushStack :: Memory -> Word16 -> IO ()
+pushStack m addr = do
+    (Mem8 sp)   <- load m Sp
+    store m Sp $ toMem8 (sp + 1)
+    writeArray (stack m) sp addr
+
+toMem8  x = Mem8  $ fromIntegral x
+toMem16 x = Mem16 $ fromIntegral x

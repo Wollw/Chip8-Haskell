@@ -18,22 +18,32 @@ runP is = do
 execute :: Memory -> Instruction -> IO ()
 execute m i = do
     execute' m i
-    incPc m
+    case i of      -- Don't increment program counter for jumps and returns.
+        (RET)      -> return ()
+        (JP _)     -> return ()
+        (CALL _)   -> return ()
+        (LONGJP _) -> return ()
+        _          -> incrementProgramCounter m
+
 executeP :: Memory -> Instruction -> IO ()
 executeP m i = do
     execute m i
+    putStrLn ""
     printMemory m
 
 execute' :: Memory -> Instruction -> IO ()
-execute' m (SYS a)          = return () -- Jump to Machine Code, unused
+execute' m (SYS addr)       = return () -- Jump to Machine Code, unused
 execute' m CLS              = return () -- todo
-execute' m RET              = return () -- todo
-execute' m (JP a)           = return () -- todo
-execute' m (CALL a)         = return () -- todo
+execute' m RET              = do
+    addr <- popStack m
+    store m Pc (toMem16 addr)
+execute' m (JP (Ram addr))  = do
+    store m Pc (toMem16 addr)
+execute' m (CALL addr)      = return () -- todo
 execute' m (SEByte  vx w)   = do
     x <- loadInt m (Register vx)
     case fromIntegral w == x of
-        True -> incPc m
+        True -> incrementProgramCounter m
         False -> return ()
 execute' m (SNEByte vx w)   = return () -- todo
 execute' m (SEAddr  vx vy)  = return () -- todo
@@ -93,9 +103,3 @@ loadInt m addr = do
     (Mem8  x) <- load m addr
     return . fromIntegral $ x
 
-toMem8  x = Mem8  $ fromIntegral x
-toMem16 x = Mem16 $ fromIntegral x
-
-incPc m = do
-    (Mem16 pc) <- load m Pc
-    store m Pc $ toMem16 (pc + 0x02)
