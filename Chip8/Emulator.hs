@@ -3,7 +3,7 @@ module Chip8.Emulator where
 import Control.Monad
 import Control.Monad.Random
 
-import Chip8.CPU
+import Chip8.Instruction
 import Chip8.Memory
 
 import Data.Bits
