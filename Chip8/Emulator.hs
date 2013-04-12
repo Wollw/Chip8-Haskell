@@ -12,7 +12,6 @@ import Chip8.Event
 import Data.Bits
 import Data.Word
 
-import Data.Array.MArray
 import Data.Array
 
 data InstructionList
@@ -150,8 +149,6 @@ execute' m (DRW vx vy nib) = do
 execute' m (SKP vx)    = do
     k <- fmap toEnum $ loadInt m (Register V0)
     pressed <- keyDown (keystate m) k
-    keys <- getElems (keystate m)
-    print keys
     case pressed of
         True  -> incrementProgramCounter m
         False -> return ()
