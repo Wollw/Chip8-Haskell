@@ -2,7 +2,7 @@
 module Chip8.Memory
     ( Register (..)
     , Address  (Ram, Register, Pc, Sp)
-    , Memory   (keystate)
+    , Memory   (eventstate)
     , MemoryValue (..)
     , toRegister
     , fromRegister
@@ -64,7 +64,7 @@ data Memory
              , iregister :: IORef Word16
              , ram       :: IOUArray Word16 Word8
              , stack     :: IOUArray Word8  Word16
-             , keystate  :: KeyState
+             , eventstate :: EventState
              }
 
 newMemory :: [Word8] -> IO Memory
@@ -75,14 +75,14 @@ newMemory rom = do
     iregister' <- newIORef 0
     ram'       <- newListArray (0x000, 0xFFF) $ replicate 0x200 0 ++ rom
     stack'     <- newArray (0x00,  0xF  ) 0
-    keystate'  <- newKeyState
+    eventstate'  <- newEventState
     return Memory { pc = pc'
                   , sp = sp'
                   , registers = registers'
                   , iregister = iregister'
                   , ram   = ram'
                   , stack = stack'
-                  , keystate = keystate'
+                  , eventstate = eventstate'
                   }
 
 data MemoryValue

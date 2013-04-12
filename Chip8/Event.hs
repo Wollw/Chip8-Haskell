@@ -1,6 +1,7 @@
 module Chip8.Event where
 
 import Data.Array.IO
+import Data.IORef
 
 import Graphics.UI.SDL as SDL
 
@@ -10,29 +11,53 @@ data Key = K0 | K1 | K2 | K3 | K4 | K5 | K6 | K7
 
 type KeyState = IOUArray Key Bool
 
+data EventState =
+    EventState { lastEventKeyDown :: IORef (Maybe Key)
+               , keyState    :: KeyState
+               }
+
+newEventState :: IO EventState
+newEventState = do
+    lastEventKeyDown' <- newIORef Nothing
+    keyState'     <- newKeyState
+    return EventState
+        { lastEventKeyDown = lastEventKeyDown'
+        , keyState     = keyState'
+        }
+
 newKeyState :: IO KeyState
 newKeyState = newArray (K0, KF) False
 
 setKey :: KeyState -> Key -> Bool -> IO ()
 setKey ks k b = writeArray ks k b
 
-keyDown :: KeyState -> Key -> IO Bool
-keyDown ks k = readArray ks k
+keyDown :: EventState -> Key -> IO Bool
+keyDown es k = readArray (keyState es) k
 
-checkEvents :: KeyState -> IO ()
-checkEvents ks = do
+checkEvents :: EventState -> IO ()
+checkEvents es = do
+    let ks = keyState es
     e  <- pollEvent
     case e of
-        KeyDown key -> setKeyHandler key True
-        KeyUp   key -> setKeyHandler key False
-        _           -> return ()
+        KeyDown (Keysym key _ _) -> do
+            writeIORef (lastEventKeyDown es) (keyLookup key)
+            setKeyHandler key True
+        KeyUp   (Keysym key _ _) -> do
+            writeIORef (lastEventKeyDown es) Nothing
+            setKeyHandler key False
+        _ -> do
+            writeIORef (lastEventKeyDown es) Nothing
+            return ()
   where
-    setKeyHandler (Keysym key _ _) b = do
-        let k = case key of
+    setKeyHandler key b = do
+        case keyLookup key of
+            Just k -> setKey (keyState es) k b
+            _      -> return ()
+    keyLookup key = case key of
                 SDLK_7          -> Just K1
                 SDLK_8          -> Just K2
                 SDLK_9          -> Just K3
-                SDLK_MINUS      -> Just KC
+                SDLK_0          -> Just KC
                 SDLK_u          -> Just K4
                 SDLK_i          -> Just K5
                 SDLK_o          -> Just K6
@@ -46,6 +71,3 @@ checkEvents ks = do
                 SDLK_PERIOD     -> Just KB
                 SDLK_SLASH      -> Just KF
                 _               -> Nothing
-        case k of
-            Just k -> setKey ks k b
-            _      -> return ()

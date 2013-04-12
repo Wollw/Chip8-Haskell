@@ -11,8 +11,8 @@ import Chip8.Event
 
 import Data.Bits
 import Data.Word
-
 import Data.Array
+import Data.IORef
 
 data InstructionList
     = IBytes [Word8]
@@ -24,7 +24,7 @@ run (IBytes rom) = do
     run' mem
   where
     run' mem = do
-        checkEvents (keystate mem)
+        checkEvents (eventstate mem)
         execute mem
         run' mem
 
@@ -34,7 +34,7 @@ runP (IBytes rom) = do
     run' mem
   where
     run' mem = do
-        checkEvents (keystate mem)
+        checkEvents (eventstate mem)
         executeP mem
         run' mem
 
@@ -148,18 +148,29 @@ execute' m (DRW vx vy nib) = do
     return () -- todo
 execute' m (SKP vx)    = do
     k <- fmap toEnum $ loadInt m (Register V0)
-    pressed <- keyDown (keystate m) k
+    pressed <- keyDown (eventstate m) k
     case pressed of
         True  -> incrementProgramCounter m
         False -> return ()
 execute' m (SKNP vx)   = do
     k <- fmap toEnum $ loadInt m (Register V0)
-    pressed <- keyDown (keystate m) k
+    pressed <- keyDown (eventstate m) k
     case pressed of
         True  -> return ()
         False -> incrementProgramCounter m
 execute' m (LDVxDT vx) = do
     return () -- todo
+execute' m (LDKey vx)  = do
+    k <- fmap fromEnum $ getKey
+    store m (Register vx) $ (toMem8 . fromEnum) k
+    return ()
+  where
+    getKey = do
+        checkEvents (eventstate m)
+        k <- readIORef $ lastEventKeyDown (eventstate m)
+        case k of
+            Just k  -> return k
+            Nothing -> getKey
 execute' m (LDDTVx vx) = do
     return () -- todo
 execute' m (LDSTVx vx) = do
