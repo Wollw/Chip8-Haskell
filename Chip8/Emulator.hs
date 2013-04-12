@@ -18,8 +18,7 @@ runP is = do
 execute :: Memory -> Instruction -> IO ()
 execute m i = do
     execute' m i
-    case i of      -- Don't increment program counter for jumps and returns.
-        (RET)      -> return ()
+    case i of      -- Don't increment program counter for jumps.
         (JP _)     -> return ()
         (CALL _)   -> return ()
         (LONGJP _) -> return ()
@@ -37,9 +36,11 @@ execute' m CLS              = return () -- todo
 execute' m RET              = do
     addr <- popStack m
     store m Pc (toMem16 addr)
-execute' m (JP (Ram addr))  = do
-    store m Pc (toMem16 addr)
-execute' m (CALL addr)      = return () -- todo
+execute' m (JP (Ram addr))  = store m Pc (toMem16 addr)
+execute' m (CALL (Ram adr)) = do
+    (Mem16 currentAddr) <- load m Pc
+    pushStack m currentAddr
+    store m Pc (toMem16 adr)
 execute' m (SEByte  vx w)   = do
     x <- loadInt m (Register vx)
     case fromIntegral w == x of

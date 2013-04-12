@@ -13,6 +13,7 @@ module Chip8.Memory
     , printMemory
     , incrementProgramCounter
     , popStack
+    , pushStack
     , toMem8
     , toMem16
     ) where
@@ -86,15 +87,20 @@ data MemoryValue
 
 toString :: Memory -> IO String
 toString m = do
-    pc'   <- fmap prettifyWord16      . readIORef . pc $ m
-    sp'   <- fmap prettifyWord8       . readIORef . sp $ m
-    regs' <- fmap (map prettifyWord8) . getElems  . registers $ m
-    i'    <- fmap prettifyWord16      . readIORef . iregister $ m
---  ram'  <- fmap (map prettifyWord8) . getElems  . ram $ m
+    pc'    <- fmap prettifyWord16       . readIORef . pc $ m
+    sp'    <- fmap prettifyWord8        . readIORef . sp $ m
+    regs'  <- fmap (map prettifyWord8)  . getElems  . registers $ m
+    i'     <- fmap prettifyWord16       . readIORef . iregister $ m
+    stack' <- fmap (map prettifyWord16) . getElems  . stack $ m
+--  ram'   <- fmap (map prettifyWord8)  . getElems  . ram $ m
     return   $  "        PC: " ++ pc'
      ++ "\n" ++ "        SP: " ++ sp'
-     ++ "\n" ++ " Registers: " ++ "| " ++ intercalate " | " (map show [V0 .. I]) ++ "    |"
-     ++ "\n" ++ "            " ++ "| " ++ intercalate " | " regs' ++ " | " ++ i' ++    " |"
+     ++ "\n" ++ " Registers: " ++ "| " ++ intercalate " | " (map show $ take 8 [V0 .. I]) ++ " |"
+     ++ "\n" ++ "            " ++ "| " ++ intercalate " | " (take 8 regs') ++ " | "
+     ++ "\n" ++ "            " ++ "| " ++ intercalate " | " (map show $ drop 8 [V0 .. I]) ++ "     |"
+     ++ "\n" ++ "            " ++ "| " ++ intercalate " | " (drop 8 regs') ++ " | " ++ i' ++    "  |"
+     ++ "\n" ++ "     Stack: " ++ "[" ++ intercalate ":" (take 8 stack') ++ ":"
+     ++ "\n" ++ "            " ++ " " ++ intercalate ":" (drop 8 stack')  ++ "]"
 --   ++ "\n" ++ "       RAM: " ++ "[" ++ intercalate ", " ram'  ++ "]"
 
 printMemory :: Memory -> IO ()
@@ -122,8 +128,8 @@ incrementProgramCounter m = do
 popStack :: Memory -> IO Word16
 popStack m = do
     (Mem8 sp)   <- load m Sp
-    store m Sp $ toMem8 (sp - 1)
-    readArray (stack m) sp
+    store m Sp $ toMem8 $ sp - 1
+    readArray (stack m) $ sp - 1
 
 pushStack :: Memory -> Word16 -> IO ()
 pushStack m addr = do
