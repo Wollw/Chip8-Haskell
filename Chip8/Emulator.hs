@@ -18,6 +18,7 @@ runP :: [Instruction] -> IO ()
 runP is = do
     mem <- new
     mapM_ (executeP mem) is
+    printRamR mem (0,24)
 
 execute :: Memory -> Instruction -> IO ()
 execute m i = do
@@ -144,6 +145,20 @@ execute' m (LDB vx)    = do
     digits = reverse . digitsR
     digitsR 0 = []
     digitsR x = x `mod` 10 : digitsR (x `div` 10)
+execute' m (LDRegsToI vx) = do
+    i <- fmap fromIntegral $ loadInt m (Register I)
+    foldM_ (\a v -> do
+                x <- load m (Register v)
+                store m (Ram $ i + a) x
+                return $ a + 1
+           ) 0 $ [V0 .. vx]
+execute' m (LDRegsFromI vx) = do
+    i <- fmap fromIntegral $ loadInt m (Register I)
+    foldM_ (\a v -> do
+                x <- load m (Ram $ i + a)
+                store m (Register v) x
+                return $ a + 1
+           ) 0 $ [V0 .. vx]
 
 loadInt :: Memory -> Address -> IO Int
 loadInt m (Register I) = do
