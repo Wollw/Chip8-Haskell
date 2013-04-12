@@ -1,27 +1,54 @@
 module Chip8.Emulator where
 
+import Control.Monad.STM
+import Control.Concurrent
 import Control.Monad
 import Control.Monad.Random
 
 import Chip8.Instruction
 import Chip8.Memory
+import Chip8.Event
 
 import Data.Bits
 import Data.Word
 
-run :: [Instruction] -> IO ()
-run is = do
-    mem <- new
-    mapM_ (execute mem) is
+import Data.Array.MArray
+import Data.Array
 
-runP :: [Instruction] -> IO ()
-runP is = do
-    mem <- new
-    mapM_ (executeP mem) is
-    printRamR mem (0,24)
+data InstructionList
+    = IBytes [Word8]
+    | ITypes [Instruction]
 
-execute :: Memory -> Instruction -> IO ()
-execute m i = do
+run :: InstructionList -> IO ()
+run (IBytes rom) = do
+    mem  <- newMemory rom
+    run' mem
+  where
+    run' mem = do
+        checkEvents (keystate mem)
+        execute mem
+        run' mem
+
+runP :: InstructionList -> IO ()
+runP (IBytes rom) = do
+    mem  <- newMemory rom
+    run' mem
+  where
+    run' mem = do
+        checkEvents (keystate mem)
+        executeP mem
+        run' mem
+
+fetchNextInstruction :: Memory -> IO Word16
+fetchNextInstruction mem = do
+    (Mem16 pc)   <- load mem Pc
+    lbyte <- fmap fromIntegral $ loadInt mem (Ram $ pc + 1)
+    hbyte <- fmap fromIntegral $ loadInt mem (Ram $ pc)
+    return $ (hbyte `shiftL` 8) + lbyte
+
+execute :: Memory -> IO ()
+execute m = do
+    i <- fmap decodeInstruction $ fetchNextInstruction m
     execute' m i
     case i of      -- Don't increment program counter for jumps.
         (JP _)     -> return ()
@@ -29,9 +56,9 @@ execute m i = do
         (LONGJP _) -> return ()
         _          -> incrementProgramCounter m
 
-executeP :: Memory -> Instruction -> IO ()
-executeP m i = do
-    execute m i
+executeP :: Memory -> IO ()
+executeP m = do
+    execute m
     putStrLn ""
     printMemory m
 
@@ -121,9 +148,19 @@ execute' m (RND vx w) = do
 execute' m (DRW vx vy nib) = do
     return () -- todo
 execute' m (SKP vx)    = do
-    return () -- todo
+    k <- fmap toEnum $ loadInt m (Register V0)
+    pressed <- keyDown (keystate m) k
+    keys <- getElems (keystate m)
+    print keys
+    case pressed of
+        True  -> incrementProgramCounter m
+        False -> return ()
 execute' m (SKNP vx)   = do
-    return () -- todo
+    k <- fmap toEnum $ loadInt m (Register V0)
+    pressed <- keyDown (keystate m) k
+    case pressed of
+        True  -> return ()
+        False -> incrementProgramCounter m
 execute' m (LDVxDT vx) = do
     return () -- todo
 execute' m (LDDTVx vx) = do

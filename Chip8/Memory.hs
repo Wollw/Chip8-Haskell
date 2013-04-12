@@ -2,11 +2,11 @@
 module Chip8.Memory
     ( Register (..)
     , Address  (Ram, Register, Pc, Sp)
-    , Memory
+    , Memory   (keystate)
     , MemoryValue (..)
     , toRegister
     , fromRegister
-    , new
+    , newMemory
     , load
     , store
     , toString
@@ -20,6 +20,7 @@ module Chip8.Memory
     ) where
 
 import Chip8.Util
+import Chip8.Event
 
 import Control.Lens
 import Control.Monad.State
@@ -63,22 +64,25 @@ data Memory
              , iregister :: IORef Word16
              , ram       :: IOUArray Word16 Word8
              , stack     :: IOUArray Word8  Word16
+             , keystate  :: KeyState
              }
 
-new :: IO Memory
-new = do
-    pc'        <- newIORef 0
+newMemory :: [Word8] -> IO Memory
+newMemory rom = do
+    pc'        <- newIORef 0x200
     sp'        <- newIORef 0
     registers' <- newArray (0x0,   0xF  ) 0
     iregister' <- newIORef 0
-    ram'       <- newArray (0x000, 0xFFF) 0
-    stack'     <- newArray (0x00, 0x0f)   0
+    ram'       <- newListArray (0x000, 0xFFF) $ replicate 0x200 0 ++ rom
+    stack'     <- newArray (0x00,  0xF  ) 0
+    keystate'  <- newKeyState
     return Memory { pc = pc'
                   , sp = sp'
                   , registers = registers'
                   , iregister = iregister'
                   , ram   = ram'
                   , stack = stack'
+                  , keystate = keystate'
                   }
 
 data MemoryValue
@@ -144,3 +148,4 @@ pushStack m addr = do
 
 toMem8  x = Mem8  $ fromIntegral x
 toMem16 x = Mem16 $ fromIntegral x
+
