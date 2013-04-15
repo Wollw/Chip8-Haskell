@@ -8,34 +8,39 @@ import Control.Monad.Random
 import Chip8.Instruction
 import Chip8.Memory
 import Chip8.Event
+import Chip8.Graphics
 
 import Data.Bits
 import Data.Word
 import Data.Array
 import Data.IORef
 
+import Graphics.UI.SDL
+
 data InstructionList
     = IBytes [Word8]
     | ITypes [Instruction]
 
-run :: InstructionList -> IO ()
-run (IBytes rom) = do
+run :: Surface -> InstructionList -> IO ()
+run screen (IBytes rom) = do
     mem  <- newMemory rom
     run' mem
   where
     run' mem = do
         checkEvents (eventstate mem)
         execute mem
+        drawVideoMemory screen (vram mem)
         run' mem
 
-runP :: InstructionList -> IO ()
-runP (IBytes rom) = do
+runP :: Surface -> InstructionList -> IO ()
+runP screen (IBytes rom) = do
     mem  <- newMemory rom
     run' mem
   where
     run' mem = do
         checkEvents (eventstate mem)
         executeP mem
+        drawVideoMemory screen (vram mem)
         run' mem
 
 fetchNextInstruction :: Memory -> IO Word16
@@ -144,8 +149,13 @@ execute' m (LONGJP (Ram a)) = do
 execute' m (RND vx w) = do
     r <- getRandomR (0,255) :: IO Word8
     store m (Register vx) (toMem8 $ w .&. r)
-execute' m (DRW vx vy nib) = do
-    return () -- todo
+execute' m (DRW vx vy n) = do
+    x <- loadInt m (Register vx)
+    y <- loadInt m (Register vy)
+    addr <- loadInt m (Register I)
+    flip <- drawSpriteLocation m (vram m) x y (fromIntegral n) (Ram $ fromIntegral addr)
+    store m (Register VF) (toMem8 $ if flip then 1 else 0)
+    return ()
 execute' m (SKP vx)    = do
     k <- fmap toEnum $ loadInt m (Register V0)
     pressed <- keyDown (eventstate m) k

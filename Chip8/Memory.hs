@@ -2,7 +2,7 @@
 module Chip8.Memory
     ( Register (..)
     , Address  (Ram, Register, Pc, Sp)
-    , Memory   (eventstate)
+    , Memory   (eventstate, ram, vram)
     , MemoryValue (..)
     , toRegister
     , fromRegister
@@ -21,6 +21,7 @@ module Chip8.Memory
 
 import Chip8.Util
 import Chip8.Event
+import Chip8.Graphics.Types
 
 import Control.Lens
 import Control.Monad.State
@@ -68,6 +69,7 @@ data Memory
              , ram        :: IOUArray Word16 Word8
              , stack      :: IOUArray Word8  Word16
              , eventstate :: EventState
+             , vram       :: VideoMemory
              }
 
 font :: [Word8]
@@ -98,6 +100,7 @@ newMemory rom = do
     ram'        <- newListArray (0x000, 0xFFF) $ replicate 0x200 0 ++ rom
     stack'      <- newArray (0x00,  0xF  ) 0
     eventstate' <- newEventState
+    vram'       <- newVideoMemory (fromIntegral vScale)
     foldM_ (\a x -> do -- load font
                 writeArray ram' a x
                 return $ a + 1
@@ -109,6 +112,7 @@ newMemory rom = do
                   , ram   = ram'
                   , stack = stack'
                   , eventstate = eventstate'
+                  , vram = vram'
                   }
 
 data MemoryValue
@@ -174,4 +178,3 @@ pushStack m addr = do
 
 toMem8  x = Mem8  $ fromIntegral x
 toMem16 x = Mem16 $ fromIntegral x
-

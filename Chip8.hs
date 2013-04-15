@@ -1,17 +1,11 @@
 import Graphics.UI.SDL as SDL
 
-scale  = 8
-width  = 64 * scale
-height = 32 * scale
+import Chip8.Emulator
+import Data.ByteString
 
-data Keys = Keys {
-    up    :: Bool,
-    down  :: Bool,
-    left  :: Bool,
-    right :: Bool
-    } deriving (Show)
-
-main = do
+runFile fp = do
     SDL.init [InitVideo, InitAudio]
-    screen <- setVideoMode width height 8 [HWSurface]
+    screen <- setVideoMode (64*8) (32*8) 0 [HWSurface]
+    rom <- fmap unpack . Data.ByteString.readFile $ fp
+    run screen (IBytes rom)
     return ()
