@@ -66,7 +66,7 @@ decodeInstruction op = case nibble 3 op of
         0x8005 -> SUB     vx vy
         0x8006 -> SHR     vx
         0x8007 -> SUBN    vx vy
-        0x8008 -> SHL     vx
+        0x800E -> SHL     vx
     0x9 -> SNEAddr vx vy
     0xA -> LDI     (Ram oxxx)
     0xB -> LONGJP  (Ram oxxx)
