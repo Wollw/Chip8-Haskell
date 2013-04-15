@@ -51,9 +51,11 @@ drawVideoMemory :: Surface -> VideoMemory -> IO ()
 drawVideoMemory screen vm = do
     let r = Rect 0 0 (vWidth * vScale) (vHeight * vScale)
     ba <- fmap bits . freezeBitArray $ vm
-    foldM_ drawBit 0 ba
-    SDL.flip screen
+    draw ba
   where
+    draw ba = do
+        foldM_ drawBit 0 ba
+        SDL.flip screen
     drawBit a i = do
         let x = a `mod` vWidth
         let y = a `div` vWidth

@@ -2,7 +2,7 @@
 module Chip8.Memory
     ( Register (..)
     , Address  (Ram, Register, Pc, Sp)
-    , Memory   (eventstate, ram, vram)
+    , Memory   (eventstate, ram, vram, screen)
     , MemoryValue (..)
     , toRegister
     , fromRegister
@@ -33,6 +33,7 @@ import Data.List (intercalate)
 import Data.BitArray
 import Data.BitArray.IO
 
+import Graphics.UI.SDL
 
 data Register
     = V0 | V1 | V2 | V3
@@ -70,6 +71,7 @@ data Memory
              , stack      :: IOUArray Word8  Word16
              , eventstate :: EventState
              , vram       :: VideoMemory
+             , screen     :: Surface
              }
 
 font :: [Word8]
@@ -101,6 +103,7 @@ newMemory rom = do
     stack'      <- newArray (0x00,  0xF  ) 0
     eventstate' <- newEventState
     vram'       <- newVideoMemory (fromIntegral vScale)
+    screen'     <- setVideoMode (64*vScale) (32*vScale) 0 [HWSurface]
     foldM_ (\a x -> do -- load font
                 writeArray ram' a x
                 return $ a + 1
@@ -113,6 +116,7 @@ newMemory rom = do
                   , stack = stack'
                   , eventstate = eventstate'
                   , vram = vram'
+                  , screen = screen'
                   }
 
 data MemoryValue

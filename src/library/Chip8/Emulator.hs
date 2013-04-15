@@ -5,6 +5,7 @@ import Control.Concurrent
 import Control.Monad
 import Control.Monad.Random
 
+import Chip8.Util
 import Chip8.Instruction
 import Chip8.Memory
 import Chip8.Event
@@ -21,26 +22,24 @@ data InstructionList
     = IBytes [Word8]
     | ITypes [Instruction]
 
-run :: Surface -> InstructionList -> IO ()
-run screen (IBytes rom) = do
+run :: InstructionList -> IO ()
+run (IBytes rom) = do
     mem  <- newMemory rom
     run' mem
   where
     run' mem = do
         checkEvents (eventstate mem)
         execute mem
-        drawVideoMemory screen (vram mem)
         run' mem
 
-runP :: Surface -> InstructionList -> IO ()
-runP screen (IBytes rom) = do
+runP :: InstructionList -> IO ()
+runP (IBytes rom) = do
     mem  <- newMemory rom
     run' mem
   where
     run' mem = do
         checkEvents (eventstate mem)
         executeP mem
-        drawVideoMemory screen (vram mem)
         run' mem
 
 fetchNextInstruction :: Memory -> IO Word16
@@ -62,8 +61,10 @@ execute m = do
 
 executeP :: Memory -> IO ()
 executeP m = do
-    execute m
+    i <- fetchNextInstruction m
     putStrLn ""
+    putStrLn $ "Instruction: " ++ prettifyWord16 i
+    execute m
     printMemory m
 
 execute' :: Memory -> Instruction -> IO ()
@@ -155,15 +156,16 @@ execute' m (DRW vx vy n) = do
     addr <- loadInt m (Register I)
     flip <- drawSpriteLocation m (vram m) x y (fromIntegral n) (Ram $ fromIntegral addr)
     store m (Register VF) (toMem8 $ if flip then 1 else 0)
+    drawVideoMemory (screen m) (vram m)
     return ()
 execute' m (SKP vx)    = do
-    k <- fmap toEnum $ loadInt m (Register V0)
+    k <- fmap toEnum $ loadInt m (Register vx)
     pressed <- keyDown (eventstate m) k
     case pressed of
         True  -> incrementProgramCounter m
         False -> return ()
 execute' m (SKNP vx)   = do
-    k <- fmap toEnum $ loadInt m (Register V0)
+    k <- fmap toEnum $ loadInt m (Register vx)
     pressed <- keyDown (eventstate m) k
     case pressed of
         True  -> return ()

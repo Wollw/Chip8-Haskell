@@ -1,2 +1,4 @@
 import Chip8
-main = runFile "ROM"
+import System.Environment
+main = getArgs >>= runFileP . head
+
