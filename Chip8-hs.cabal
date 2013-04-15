@@ -15,9 +15,17 @@ build-type:          Simple
 cabal-version:       >=1.8
 
 library
-  Hs-source-dirs:      src
-  exposed-modules:     Chip8.Memory, Chip8.Util, Chip8.Instruction, Chip8.Emulator
-                      ,Chip8.Event, Chip8.Graphics, Chip8.Graphics.Types
+  Hs-source-dirs:      src/library
+  exposed-modules:       Chip8, Chip8.Memory, Chip8.Util
+                       , Chip8.Instruction, Chip8.Emulator
+                       , Chip8.Event
+                       , Chip8.Graphics, Chip8.Graphics.Types
   -- other-modules:       
   GHC-Options:         -O2
-  build-depends:       base ==4.6.*, lens ==3.9.*, mtl ==2.1.*, array ==0.4.*, MonadRandom, SDL, stm, bitarray
+  build-depends:       base ==4.6.*, lens ==3.9.*, mtl ==2.1.*, array ==0.4.*, MonadRandom, SDL, stm, bitarray, bytestring
+
+executable chip8
+    Main-is:             Main.hs
+    Build-Depends:       Chip8-hs, base, bytestring
+    hs-source-dirs:      src/binary
+    ghc-options:         -O2

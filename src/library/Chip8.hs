@@ -1,3 +1,5 @@
+module Chip8 where
+
 import Graphics.UI.SDL as SDL
 
 import Chip8.Emulator

@@ -34,10 +34,9 @@ drawSprite vram dx dy ps = do
         let y = a `div` 8
         currentState <- readBit vram (posIndex (dx + x) (dy + y))
         let e' = if state == On && currentState == True then True else False
-        drawPixel vram (dx + x) (dy + y) $ if e' then Off else state
-        --case state == On of
-        --    True  -> drawPixel vram (dx + x) (dy + y) $ if e' then Off else state
-        --    False -> return ()
+        case state == On of
+            True  -> drawPixel vram (dx + x) (dy + y) $ if e' then Off else state
+            False -> return ()
         return $ (a + 1, if e' || e then True else False)
 
 drawSpriteLocation :: Memory -> VideoMemory -> Int -> Int -> Int -> Address -> IO Bool
