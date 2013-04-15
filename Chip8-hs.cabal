@@ -15,6 +15,7 @@ build-type:          Simple
 cabal-version:       >=1.8
 
 library
+  Hs-source-dirs:      src
   exposed-modules:     Chip8.Memory, Chip8.Util, Chip8.Instruction, Chip8.Emulator
                       ,Chip8.Event, Chip8.Graphics, Chip8.Graphics.Types
   -- other-modules:       
