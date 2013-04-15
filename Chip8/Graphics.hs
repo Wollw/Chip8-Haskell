@@ -18,9 +18,20 @@ data PixelState = ON | OFF
 newVideoMemory :: IO VideoMemory
 newVideoMemory = newBitArray (0, vWidth * vHeight) True
 
-setPixel :: VideoMemory -> Int -> Int -> PixelState -> IO ()
-setPixel ba x y ON  = writeBit ba (posIndex x y) True
-setPixel ba x y OFF = writeBit ba (posIndex x y) False
+drawPixel :: VideoMemory -> Int -> Int -> PixelState -> IO ()
+drawPixel vram x y ON  = writeBit vram (posIndex x y) True
+drawPixel vram x y OFF = writeBit vram (posIndex x y) False
+
+drawSprite :: VideoMemory -> Int -> Int -> [PixelState] -> IO ()
+drawSprite vram dx dy ps = do
+    foldM_ setPixel 0 ps
+    return ()
+  where
+    setPixel a state = do
+        let x = a `mod` 8
+        let y = a `div` 8
+        drawPixel vram (dx + x) (dy + y) state
+        return $ a + 1
 
 posIndex x y = y * vWidth + x
 

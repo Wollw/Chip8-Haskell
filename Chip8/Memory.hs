@@ -29,6 +29,9 @@ import Data.Word
 import Data.Array.IO
 import Data.IORef
 import Data.List (intercalate)
+import Data.BitArray
+import Data.BitArray.IO
+
 
 data Register
     = V0 | V1 | V2 | V3
@@ -58,12 +61,12 @@ instance Show Address where
     show (Ram r)      = "[" ++ prettifyWord16 r ++ "]"
 
 data Memory
-    = Memory { pc        :: IORef Word16
-             , sp        :: IORef Word8
-             , registers :: IOUArray Int Word8 
-             , iregister :: IORef Word16
-             , ram       :: IOUArray Word16 Word8
-             , stack     :: IOUArray Word8  Word16
+    = Memory { pc         :: IORef Word16
+             , sp         :: IORef Word8
+             , registers  :: IOUArray Int Word8 
+             , iregister  :: IORef Word16
+             , ram        :: IOUArray Word16 Word8
+             , stack      :: IOUArray Word8  Word16
              , eventstate :: EventState
              }
 
@@ -88,13 +91,13 @@ font =  [ 0xF0, 0x90, 0x90, 0x90, 0xF0 -- 0
 
 newMemory :: [Word8] -> IO Memory
 newMemory rom = do
-    pc'        <- newIORef 0x200
-    sp'        <- newIORef 0
-    registers' <- newArray (0x0,   0xF  ) 0
-    iregister' <- newIORef 0
-    ram'       <- newListArray (0x000, 0xFFF) $ replicate 0x200 0 ++ rom
-    stack'     <- newArray (0x00,  0xF  ) 0
-    eventstate'  <- newEventState
+    pc'         <- newIORef 0x200
+    sp'         <- newIORef 0
+    registers'  <- newArray (0x0,   0xF  ) 0
+    iregister'  <- newIORef 0
+    ram'        <- newListArray (0x000, 0xFFF) $ replicate 0x200 0 ++ rom
+    stack'      <- newArray (0x00,  0xF  ) 0
+    eventstate' <- newEventState
     foldM_ (\a x -> do -- load font
                 writeArray ram' a x
                 return $ a + 1
