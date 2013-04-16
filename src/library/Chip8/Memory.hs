@@ -95,15 +95,16 @@ font =  [ 0xF0, 0x90, 0x90, 0x90, 0xF0 -- 0
 
 newMemory :: [Word8] -> IO Memory
 newMemory rom = do
-    pc'         <- newIORef 0x200
-    sp'         <- newIORef 0
-    registers'  <- newArray (0x0,   0xF  ) 0
-    iregister'  <- newIORef 0
-    ram'        <- newListArray (0x000, 0xFFF) $ replicate 0x200 0 ++ rom
-    stack'      <- newArray (0x00,  0xF  ) 0
-    eventstate' <- newEventState
-    vram'       <- newVideoMemory (fromIntegral vScale)
-    screen'     <- setVideoMode (64*vScale) (32*vScale) 0 [HWSurface]
+    pc'          <- newIORef 0x200
+    sp'          <- newIORef 0
+    registers'   <- newArray (0x0,   0xF  ) 0
+    iregister'   <- newIORef 0
+    ram'         <- newListArray (0x000, 0xFFF) $ replicate 0x200 0 ++ rom
+    stack'       <- newArray (0x00,  0xF  ) 0
+    eventstate'  <- newEventState
+    vram'        <- newVideoMemory (fromIntegral vScale)
+    screen'      <- setVideoMode (64*vScale) (32*vScale) 0 [HWSurface]
+    lastRefresh' <- newIORef 0
     foldM_ (\a x -> do -- load font
                 writeArray ram' a x
                 return $ a + 1

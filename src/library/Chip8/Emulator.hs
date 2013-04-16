@@ -2,6 +2,8 @@ module Chip8.Emulator where
 
 import Control.Monad.STM
 import Control.Concurrent
+import Control.Concurrent.Suspend.Lifted
+import Control.Concurrent.Timer
 import Control.Monad
 import Control.Monad.Random
 
@@ -25,6 +27,7 @@ data InstructionList
 run :: InstructionList -> IO ()
 run (IBytes rom) = do
     mem  <- newMemory rom
+    repeatedTimer (drawVideoMemory (screen mem) (vram mem)) (msDelay 16)
     run' mem
   where
     run' mem = do
@@ -35,6 +38,7 @@ run (IBytes rom) = do
 runP :: InstructionList -> IO ()
 runP (IBytes rom) = do
     mem  <- newMemory rom
+    repeatedTimer (drawVideoMemory (screen mem) (vram mem)) (msDelay 16)
     run' mem
   where
     run' mem = do
@@ -156,7 +160,6 @@ execute' m (DRW vx vy n) = do
     addr <- loadInt m (Register I)
     flip <- drawSpriteLocation m (vram m) x y (fromIntegral n) (Ram $ fromIntegral addr)
     store m (Register VF) (toMem8 $ if flip then 1 else 0)
-    drawVideoMemory (screen m) (vram m)
     return ()
 execute' m (SKP vx)    = do
     k <- fmap toEnum $ loadInt m (Register vx)
