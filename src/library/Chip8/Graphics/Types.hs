@@ -1,13 +1,14 @@
 module Chip8.Graphics.Types where
 
-import Data.BitArray.IO
+import Data.Array.BitArray
+import Data.Array.BitArray.IO
 
-type VideoMemory = IOBitArray
+type VideoMemory = IOBitArray Int
 
 vScale = 8
 vWidth  = 64
 vHeight = 32
 
 newVideoMemory :: Integer -> IO VideoMemory
-newVideoMemory scale = newBitArray (0, (vScale * vWidth * vScale * vHeight) - 1) False
+newVideoMemory scale = newArray (0, (vScale * vWidth * vScale * vHeight) - 1) False
 

@@ -27,7 +27,7 @@ data InstructionList
 run :: InstructionList -> IO ()
 run (IBytes rom) = do
     mem  <- newMemory rom
-    repeatedTimer (drawVideoMemory (screen mem) (vram mem)) (msDelay 16)
+    repeatedTimer (drawVideoMemory (screen mem) (vram mem)) (msDelay 10)
     run' mem
   where
     run' mem = do
@@ -73,7 +73,7 @@ executeP m = do
 
 execute' :: Memory -> Instruction -> IO ()
 execute' m (SYS addr)       = return () -- Jump to Machine Code, unused
-execute' m CLS              = return () -- todo
+execute' m CLS              = clearVideoMemory (vram m)
 execute' m RET              = do
     addr <- popStack m
     store m Pc (toMem16 addr)
