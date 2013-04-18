@@ -29,10 +29,10 @@ newKeyState :: IO KeyState
 newKeyState = newArray (K0, KF) False
 
 setKey :: KeyState -> Key -> Bool -> IO ()
-setKey ks k b = writeArray ks k b
+setKey = writeArray
 
 keyDown :: EventState -> Key -> IO Bool
-keyDown es k = readArray (keyState es) k
+keyDown es = readArray (keyState es)
 
 checkEvents :: EventState -> IO ()
 checkEvents es = do
@@ -49,7 +49,7 @@ checkEvents es = do
             writeIORef (lastEventKeyDown es) Nothing
             return ()
   where
-    setKeyHandler key b = do
+    setKeyHandler key b =
         case keyLookup key of
             Just k -> setKey (keyState es) k b
             _      -> return ()

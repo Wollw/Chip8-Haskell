@@ -1,4 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
 module Chip8.Memory
     ( Register (..)
     , Address  (Ram, Register, Pc, Sp)
@@ -108,7 +107,7 @@ newMemory rom = do
     foldM_ (\a x -> do -- load font
                 writeArray ram' a x
                 return $ a + 1
-           ) 0 $ font
+           ) 0 font
     return Memory { pc = pc'
                   , sp = sp'
                   , registers = registers'
@@ -154,7 +153,7 @@ load :: Memory -> Address -> IO MemoryValue
 load m Pc           = (readIORef . pc $ m) >>= \x -> return $ Mem16 x
 load m Sp           = (readIORef . sp $ m) >>= \x -> return $ Mem8  x
 load m (Register I) = (readIORef . iregister $ m) >>= \x -> return $ Mem16  x
-load m (Register r) = readArray (registers m) (fromEnum $ r) >>= \x -> return (Mem8 x)
+load m (Register r) = readArray (registers m) (fromEnum r) >>= \x -> return (Mem8 x)
 load m (Ram r)      = readArray (ram m) r >>= \x -> return (Mem8 x)
 
 store :: Memory -> Address -> MemoryValue -> IO ()

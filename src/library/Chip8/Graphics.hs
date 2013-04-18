@@ -32,17 +32,16 @@ drawSprite vram dx dy ps = do
     setPixel (a,e) state = do
         let x = a `mod` 8
         let y = a `div` 8
-        currentState <- readArray vram (posIndex (dx + x) (dy + y))
-        let e' = if state == On && currentState == True then True else False
-        case state == On of
-            True  -> drawPixel vram (dx + x) (dy + y) $ if e' then Off else state
-            False -> return ()
-        return $ (a + 1, if e' || e then True else False)
+        currentStateOn <- readArray vram (posIndex (dx + x) (dy + y))
+        let e' =  state == On && currentStateOn
+        when (state == On)
+            $ drawPixel vram (dx + x) (dy + y) (if e' then Off else state)
+        return (a + 1, e' || e)
 
 drawSpriteLocation :: Memory -> VideoMemory -> Int -> Int -> Int -> Address -> IO Bool
 drawSpriteLocation mem vram x y n (Ram addr) = do
     sprite <- fmap (take n . drop (fromIntegral addr)) $ MA.getElems (ram mem)
-    let bools = concat . map toBoolList $ sprite
+    let bools = concatMap toBoolList sprite
     drawSprite vram x y $ map boolToPixelState bools
 
 posIndex x y = (y `mod` vHeight) * vWidth + (x `mod` vWidth)

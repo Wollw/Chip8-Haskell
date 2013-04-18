@@ -50,7 +50,7 @@ fetchNextInstruction :: Memory -> IO Word16
 fetchNextInstruction mem = do
     (Mem16 pc)   <- load mem Pc
     lbyte <- fmap fromIntegral $ loadInt mem (Ram $ pc + 1)
-    hbyte <- fmap fromIntegral $ loadInt mem (Ram $ pc)
+    hbyte <- fmap fromIntegral $ loadInt mem (Ram pc)
     return $ (hbyte `shiftL` 8) + lbyte
 
 execute :: Memory -> IO ()
@@ -84,20 +84,14 @@ execute' m (CALL (Ram adr)) = do
     store m Pc (toMem16 adr)
 execute' m (SEByte  vx w)   = do
     x <- loadInt m (Register vx)
-    case fromIntegral w == x of
-        True -> incrementProgramCounter m
-        False -> return ()
+    when (fromIntegral w == x) $ incrementProgramCounter m
 execute' m (SNEByte vx w)   = do
     x <- loadInt m (Register vx)
-    case fromIntegral w /= x of
-        True -> incrementProgramCounter m
-        False -> return ()
+    when (fromIntegral w /= x) $ incrementProgramCounter m
 execute' m (SEAddr vx vy)  = do
     x <- loadInt m (Register vx)
     y <- loadInt m (Register vy)
-    case fromIntegral x == y of
-        True -> incrementProgramCounter m
-        False -> return ()
+    when (fromIntegral x == y) $ incrementProgramCounter m
 execute' m (LDByte  vx w)   = store m (Register vx) (Mem8 w)
 execute' m (ADDByte vx w)   = do
     x <- loadInt m (Register vx)
@@ -143,11 +137,8 @@ execute' m (SHL vx)         = do
 execute' m (SNEAddr vx vy)  = do
     x <- loadInt m (Register vx)
     y <- loadInt m (Register vy)
-    case fromIntegral x /= y of
-        True -> incrementProgramCounter m
-        False -> return ()
-execute' m (LDI (Ram addr)) = do
-    store m (Register I) (toMem16 addr)
+    when (fromIntegral x /= y) $ incrementProgramCounter m
+execute' m (LDI (Ram addr)) = store m (Register I) (toMem16 addr)
 execute' m (LONGJP (Ram a)) = do
     x <- loadInt m (Register V0)
     store m Pc (toMem16 $ fromIntegral a + x)
@@ -164,19 +155,14 @@ execute' m (DRW vx vy n) = do
 execute' m (SKP vx)    = do
     k <- fmap toEnum $ loadInt m (Register vx)
     pressed <- keyDown (eventstate m) k
-    case pressed of
-        True  -> incrementProgramCounter m
-        False -> return ()
+    when pressed $ incrementProgramCounter m
 execute' m (SKNP vx)   = do
     k <- fmap toEnum $ loadInt m (Register vx)
     pressed <- keyDown (eventstate m) k
-    case pressed of
-        True  -> return ()
-        False -> incrementProgramCounter m
-execute' m (LDVxDT vx) = do
-    return () -- todo
+    unless pressed $ incrementProgramCounter m
+execute' m (LDVxDT vx) = return () -- todo
 execute' m (LDKey vx)  = do
-    k <- fmap fromEnum $ getKey
+    k <- fmap fromEnum getKey
     store m (Register vx) $ (toMem8 . fromEnum) k
     return ()
   where
@@ -186,10 +172,8 @@ execute' m (LDKey vx)  = do
         case k of
             Just k  -> return k
             Nothing -> getKey
-execute' m (LDDTVx vx) = do
-    return () -- todo
-execute' m (LDSTVx vx) = do
-    return () -- todo
+execute' m (LDDTVx vx) = return () -- todo
+execute' m (LDSTVx vx) = return () -- todo
 execute' m (ADDI vx)   = do
     i <- loadInt m (Register I)
     x <- loadInt m (Register vx)
@@ -200,25 +184,30 @@ execute' m (LDF vx)    = do
 execute' m (LDB vx)    = do
     x <- loadInt m (Register vx)
     i <- fmap fromIntegral $ loadInt m (Register I)
-    foldM_ (\a y -> store m (Ram $ i + a) (toMem8 y) >> return (a + 1)) 0 $ digits x
+    foldM_
+      (\a y ->
+        store m (Ram $ i + a) (toMem8 y)
+        >> return (a + 1)
+      ) 0 (digits x)
   where
     digits = reverse . digitsR
     digitsR 0 = []
     digitsR x = x `mod` 10 : digitsR (x `div` 10)
 execute' m (LDRegsToI vx) = do
     i <- fmap fromIntegral $ loadInt m (Register I)
-    foldM_ (\a v -> do
-                x <- load m (Register v)
-                store m (Ram $ i + a) x
-                return $ a + 1
-           ) 0 $ [V0 .. vx]
+    foldM_
+      (\a v -> do
+        x <- load m (Register v)
+        store m (Ram $ i + a) x
+        return $ a + 1
+      ) 0 [V0 .. vx]
 execute' m (LDRegsFromI vx) = do
     i <- fmap fromIntegral $ loadInt m (Register I)
     foldM_ (\a v -> do
                 x <- load m (Ram $ i + a)
                 store m (Register v) x
                 return $ a + 1
-           ) 0 $ [V0 .. vx]
+           ) 0 [V0 .. vx]
 
 loadInt :: Memory -> Address -> IO Int
 loadInt m (Register I) = do

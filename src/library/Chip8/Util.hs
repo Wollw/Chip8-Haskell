@@ -23,4 +23,4 @@ toBoolList :: Word8 -> [Bool]
 toBoolList w = reverse . toBoolList' w $ 0
   where
     toBoolList' _ 8 = []
-    toBoolList' w b = testBit w b : (toBoolList' w $ b + 1)
+    toBoolList' w b = testBit w b : toBoolList' w (b + 1)
