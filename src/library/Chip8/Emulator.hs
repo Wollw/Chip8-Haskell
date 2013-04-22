@@ -27,7 +27,8 @@ data InstructionList
 run :: InstructionList -> IO ()
 run (IBytes rom) = do
     mem  <- newMemory rom
-    repeatedTimer (drawVideoMemory (screen mem) (vram mem)) (msDelay 10)
+    repeatedTimer (drawVideoMemory (screen mem) (vram mem)) (msDelay 17)
+    repeatedTimer (decDelayTimer mem) (msDelay 17)
     run' mem
   where
     run' mem = do
