@@ -39,12 +39,18 @@ runP :: InstructionList -> IO ()
 runP (IBytes rom) = do
     mem  <- newMemory rom
     repeatedTimer (drawVideoMemory (screen mem) (vram mem)) (msDelay 16)
+    repeatedTimer (decDelayTimer mem) (msDelay 16)
     run' mem
   where
     run' mem = do
         checkEvents (eventstate mem)
         executeP mem
         run' mem
+
+decDelayTimer :: Memory -> IO ()
+decDelayTimer mem = do
+    (Mem8 x) <- load mem Dt
+    when (x > 0) (store mem Dt $ toMem8 (x - 1))
 
 fetchNextInstruction :: Memory -> IO Word16
 fetchNextInstruction mem = do
@@ -160,7 +166,9 @@ execute' m (SKNP vx)   = do
     k <- fmap toEnum $ loadInt m (Register vx)
     pressed <- keyDown (eventstate m) k
     unless pressed $ incrementProgramCounter m
-execute' m (LDVxDT vx) = return () -- todo
+execute' m (LDVxDT vx) = do
+    x <- load m Dt
+    store m (Register vx) x
 execute' m (LDKey vx)  = do
     k <- fmap fromEnum getKey
     store m (Register vx) $ (toMem8 . fromEnum) k
@@ -172,8 +180,12 @@ execute' m (LDKey vx)  = do
         case k of
             Just k  -> return k
             Nothing -> getKey
-execute' m (LDDTVx vx) = return () -- todo
-execute' m (LDSTVx vx) = return () -- todo
+execute' m (LDDTVx vx) = do
+    x <- loadInt m (Register vx)
+    store m Dt (toMem8 x)
+execute' m (LDSTVx vx) = do
+    x <- loadInt m (Register vx)
+    store m St (toMem8 x)
 execute' m (ADDI vx)   = do
     i <- loadInt m (Register I)
     x <- loadInt m (Register vx)
