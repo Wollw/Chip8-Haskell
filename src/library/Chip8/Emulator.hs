@@ -1,5 +1,6 @@
 module Chip8.Emulator where
 
+import Control.Monad
 import Control.Monad.STM
 import Control.Concurrent
 import Control.Concurrent.Suspend.Lifted
@@ -17,8 +18,13 @@ import Data.Bits
 import Data.Word
 import Data.Array
 import Data.IORef
+import Data.Int
 
 import Graphics.UI.SDL
+
+import Sound.Sox.Play
+import Sound.Sox.Signal.List
+import Sound.Sox.Option.Format as Option
 
 data InstructionList
     = IBytes [Word8]
@@ -28,7 +34,8 @@ run :: InstructionList -> IO ()
 run (IBytes rom) = do
     mem  <- newMemory rom
     repeatedTimer (drawVideoMemory (screen mem) (vram mem)) (msDelay 17)
-    repeatedTimer (decDelayTimer mem) (msDelay 17)
+    repeatedTimer (decTimer mem Dt) (msDelay 17)
+    repeatedTimer (decTimer mem St) (msDelay 17)
     run' mem
   where
     run' mem = do
@@ -40,7 +47,8 @@ runP :: InstructionList -> IO ()
 runP (IBytes rom) = do
     mem  <- newMemory rom
     repeatedTimer (drawVideoMemory (screen mem) (vram mem)) (msDelay 16)
-    repeatedTimer (decDelayTimer mem) (msDelay 16)
+    repeatedTimer (decTimer mem Dt) (msDelay 17)
+    repeatedTimer (decTimer mem St) (msDelay 17)
     run' mem
   where
     run' mem = do
@@ -48,10 +56,11 @@ runP (IBytes rom) = do
         executeP mem
         run' mem
 
-decDelayTimer :: Memory -> IO ()
-decDelayTimer mem = do
-    (Mem8 x) <- load mem Dt
-    when (x > 0) (store mem Dt $ toMem8 (x - 1))
+decTimer :: Memory -> Address -> IO ()
+decTimer mem addr = do
+    (Mem8 x) <- load mem addr
+    when (x > 0) (store mem addr $ toMem8 (x - 1))
+    
 
 fetchNextInstruction :: Memory -> IO Word16
 fetchNextInstruction mem = do
@@ -186,6 +195,7 @@ execute' m (LDDTVx vx) = do
     store m Dt (toMem8 x)
 execute' m (LDSTVx vx) = do
     x <- loadInt m (Register vx)
+    putStrLn "SOUND"
     store m St (toMem8 x)
 execute' m (ADDI vx)   = do
     i <- loadInt m (Register I)
@@ -229,4 +239,3 @@ loadInt m (Register I) = do
 loadInt m addr = do
     (Mem8  x) <- load m addr
     return . fromIntegral $ x
-
