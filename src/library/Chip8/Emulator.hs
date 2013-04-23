@@ -41,6 +41,7 @@ run (IBytes rom) = do
     run' mem = do
         checkEvents (eventstate mem)
         execute mem
+        suspend (msDelay 1)
         run' mem
 
 runP :: InstructionList -> IO ()
