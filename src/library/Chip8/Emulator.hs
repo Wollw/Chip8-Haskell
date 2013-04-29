@@ -1,12 +1,11 @@
 module Chip8.Emulator where
 
-import Control.Monad
-import Control.Monad.STM
 import Control.Concurrent
 import Control.Concurrent.Suspend.Lifted
 import Control.Concurrent.Timer
 import Control.Monad
 import Control.Monad.Random
+import Control.Monad.STM
 
 import Chip8.Util
 import Chip8.Instruction
@@ -31,31 +30,23 @@ data InstructionList
     | ITypes [Instruction]
 
 run :: InstructionList -> IO ()
-run (IBytes rom) = do
+run = run' execute
+
+runP :: InstructionList -> IO ()
+runP = run' executeP
+
+run' :: (Memory -> IO ()) -> InstructionList -> IO ()
+run' exe (IBytes rom) = do
     mem  <- newMemory rom
     repeatedTimer (drawVideoMemory (screen mem) (vram mem)) (msDelay 17)
     repeatedTimer (decTimer mem Dt) (msDelay 17)
     repeatedTimer (decTimer mem St) (msDelay 17)
-    run' mem
+    runLoop exe mem
   where
-    run' mem = do
+    runLoop exe mem = do
         checkEvents (eventstate mem)
-        execute mem
-        suspend (msDelay 1)
-        run' mem
-
-runP :: InstructionList -> IO ()
-runP (IBytes rom) = do
-    mem  <- newMemory rom
-    repeatedTimer (drawVideoMemory (screen mem) (vram mem)) (msDelay 16)
-    repeatedTimer (decTimer mem Dt) (msDelay 17)
-    repeatedTimer (decTimer mem St) (msDelay 17)
-    run' mem
-  where
-    run' mem = do
-        checkEvents (eventstate mem)
-        executeP mem
-        run' mem
+        exe mem
+        runLoop exe mem
 
 decTimer :: Memory -> Address -> IO ()
 decTimer mem addr = do
