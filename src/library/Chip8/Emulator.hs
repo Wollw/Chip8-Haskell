@@ -41,12 +41,11 @@ run' exe (IBytes rom) = do
     repeatedTimer (drawVideoMemory (screen mem) (vram mem)) (msDelay 17)
     repeatedTimer (decTimer mem Dt) (msDelay 17)
     repeatedTimer (decTimer mem St) (msDelay 17)
-    runLoop exe mem
+    forever (runLoop exe mem >> threadDelay 800)
   where
     runLoop exe mem = do
         checkEvents (eventstate mem)
         exe mem
-        runLoop exe mem
 
 decTimer :: Memory -> Address -> IO ()
 decTimer mem addr = do
@@ -187,7 +186,7 @@ execute' m (LDDTVx vx) = do
     store m Dt (toMem8 x)
 execute' m (LDSTVx vx) = do
     x <- loadInt m (Register vx)
-    putStrLn "SOUND"
+    --putStrLn "SOUND"
     store m St (toMem8 x)
 execute' m (ADDI vx)   = do
     i <- loadInt m (Register I)
