@@ -38,7 +38,7 @@ runP = run' executeP
 run' :: (Memory -> IO ()) -> InstructionList -> IO ()
 run' exe (IBytes rom) = do
     mem  <- newMemory rom
-    repeatedTimer (drawVideoMemory (screen mem) (vram mem)) (msDelay 17)
+    repeatedTimer (drawVideoMemory (screen mem) (vram mem)) (usDelay 100)
     repeatedTimer (decTimer mem Dt) (msDelay 17)
     repeatedTimer (decTimer mem St) (msDelay 17)
     forever (runLoop exe mem >> threadDelay 800)
